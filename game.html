@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fabio's Game</title>
+    <style>
+        canvas {
+          display: block;
+          margin: 0 auto;
+          border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+<canvas id="myCanvas" width="480" height="320"></canvas>
+
+<script>
+    // Load sounds
+    const sounds = {
+        backgroundMusic: new Audio("sounds/background_music.mp3"),
+        ballBrickCollision: {
+            play: () => {
+                const audio = new Audio('sounds/ball_brick.mp3')
+                audio.play()
+            }
+        },
+        gameOver: {
+            play: () => {
+                const audio = new Audio('sounds/game_over.mp3')
+                audio.play()
+            }
+        },
+        failure: {
+            play: () => {
+                const audio = new Audio('sounds/failure.mp3')
+                audio.play();
+            }
+        }
+    };
+
+    // Play background music as a loop
+    sounds.backgroundMusic.volume = 0.1;
+    sounds.backgroundMusic.loop = true;
+    setTimeout(() => sounds.backgroundMusic.play(), 2000);
+
+    // Image loading (assuming all images are in the same folder)
+    const images = {
+        spriteSheet: new Image(),
+        hearts: new Image(),
+        gameOver: new Image(),
+    };
+    images.spriteSheet.src = 'images/sprites.png';
+    images.hearts.src = 'images/hearts.png';
+    images.gameOver.src = 'images/game_over.png';
+
+    const bricks = [];
+    const brickProps = {
+        width: 40,
+        height: 40,
+        padding: 0,
+        offsetTop: 30,
+        offsetLeft: 30,
+    };
+
+    const canvas = document.getElementById("myCanvas");
+    canvas.style.cursor = "none";
+    canvas.width = brickProps.width * 32;
+    canvas.height = brickProps.height * 22;
+
+    const ctx = canvas.getContext("2d");
+
+    const paddle = {
+        width: 120,
+        height: 33,
+        x: (canvas.width - 120) / 2,
+        y: canvas.height - 33,
+    };
+
+    const ball = {
+        radius: 8,
+        x: paddle.x + 60,
+        y: paddle.y - 16,
+        dx: Math.random() < 0.5 ? 3 : -3,
+        dy: -3,
+        state: "OnPaddle"
+    };
+
+    const game = {
+        state: "Playing",
+        lives: 3,
+        maxLives: 3,
+        gameOverY: canvas.height,
+    };
+
+    const characters = {
+        F: {
+            width: 4,
+            bricks: [
+                {x: 0, y:0}, {x: 1, y:0}, {x: 2, y:0}, {x: 3, y:0},
+                {x: 0, y:1},
+                {x: 0, y:2},
+                {x: 0, y:3}, {x: 1, y:3}, {x: 2, y:3},
+                {x: 0, y:4},
+                {x: 0, y:5},
+                {x: 0, y:6}
+            ]
+        },
+        A: {
+            width: 4,
+            bricks: [
+                {x: 1, y:0}, {x: 2, y:0},
+                {x: 0, y:1}, {x: 3, y:1},
+                {x: 0, y:2}, {x: 3, y:2},
+                {x: 0, y:3}, {x: 1, y:3}, {x: 2, y:3}, {x: 3, y:3},
+                {x: 0, y:4}, {x: 3, y:4},
+                {x: 0, y:5}, {x: 3, y:5},
+                {x: 0, y:6}, {x: 3, y:6}
+            ]
+        },
+        B: {
+            width: 4,
+            bricks: [
+                {x: 0, y:0}, {x: 1, y:0}, {x: 2, y:0},
+                {x: 0, y:1}, {x: 3, y:1},
+                {x: 0, y:2}, {x: 3, y:2},
+                {x: 0, y:3}, {x: 1, y:3}, {x: 2, y: 3},
+                {x: 0, y:4},{x: 3, y:4},
+                {x: 0, y:5},{x: 3, y:5},
+                {x: 0, y:6},{x: 1, y:6},{x: 2, y:6},
+            ]
+        },
+        I: {
+            width: 1,
+            bricks: [
+                {x: 0, y:0},
+                {x: 0, y:1},
+                {x: 0, y:2},
+                {x: 0, y:3},
+                {x: 0, y:4},
+                {x: 0, y:5},
+                {x: 0, y:6},
+            ]
+        },
+        O: {
+            width: 4,
+            bricks:[
+                {x: 1, y:0}, {x: 2, y:0},
+                {x: 0, y:1}, {x: 3, y:1},
+                {x: 0, y:2}, {x: 3, y:2},
+                {x: 0, y:3}, {x: 3, y: 3},
+                {x: 0, y:4},{x: 3, y:4},
+                {x: 0, y:5},{x: 3, y:5},
+                {x: 1, y:6},{x: 2, y:6},
+            ]
+        },
+        C: {
+            width: 4,
+            bricks:[
+                {x: 1, y:0}, {x: 2, y:0},
+                {x: 0, y:1}, {x: 3, y:1},
+                {x: 0, y:2},
+                {x: 0, y:3},
+                {x: 0, y:4},
+                {x: 0, y:5},{x: 3, y:5},
+                {x: 1, y:6},{x: 2, y:6},
+            ]
+        },
+        Z: {
+            width: 5,
+            bricks:[
+                {x: 0, y:0}, {x: 1, y:0}, {x: 0, y:0}, {x: 2, y:0}, {x: 3, y:0}, {x: 4, y: 0},
+                {x: 4, y:1},
+                {x: 3, y:2},
+                {x: 2, y:3},
+                {x: 1, y:4},
+                {x: 0, y:5},
+                {x: 0, y:6}, {x: 1, y:6}, {x: 0, y:6}, {x: 2, y:6}, {x: 3, y:6}, {x: 4, y: 6},
+            ]
+        },
+        N: {
+            width: 5,
+            bricks:[
+                {x: 0, y:0}, {x: 4, y:0},
+                {x: 0, y:1}, {x: 1, y: 1}, {x: 4, y:1},
+                {x: 0, y:2}, {x: 2, y: 2}, {x: 4, y:2},
+                {x: 0, y:3}, {x: 2, y: 3}, {x: 4, y:3},
+                {x: 0, y:4}, {x: 3, y: 4}, {x: 4, y:4},
+                {x: 0, y:5}, {x: 4, y:5},
+                {x: 0, y:6}, {x: 4, y:6},
+            ]
+        },
+        E: {
+            width: 4,
+            bricks: [
+                {x: 0, y:0}, {x: 1, y:0}, {x: 2, y:0}, {x: 3, y: 0},
+                {x: 0, y:1},
+                {x: 0, y:2},
+                {x: 0, y:3}, {x: 1, y:3}, {x: 2, y: 3},
+                {x: 0, y:4},
+                {x: 0, y:5},
+                {x: 0, y:6}, {x: 1, y:6}, {x: 2, y:6}, {x: 3, y: 6},
+            ]
+        }
+    };
+
+    function randomOffset() {
+        const offsets = [0, 40, 120, 160, 200]
+        const randomIndex = Math.floor(Math.random() * offsets.length);
+        return offsets[randomIndex];
+    }
+
+    function createBricks() {
+        const layout = [
+            ["F", "A", "B", "I", "O"],
+            ["C", "A", "Z", "Z", "O", "N", "E"]
+        ];
+        let cursorX = 10, cursorY = 10;
+        layout.forEach(row => {
+            cursorX = 10;
+            row.forEach(char => {
+                const data = characters[char];
+                data.bricks.forEach(b => {
+                    bricks.push({
+                        x: cursorX + b.x * 32,
+                        y: cursorY + b.y * 32,
+                        state: 1,
+                        spriteX: randomOffset(),
+                        spriteY: 0
+                    });
+                });
+                cursorX += data.width * 32 + 25;
+            });
+            cursorY += brickProps.height * 8;
+        });
+    }
+
+    function drawSprite(x, y, width, height, spriteX, spriteY) {
+        ctx.drawImage(images.spriteSheet, spriteX, spriteY, width, height, x, y, width, height);
+    }
+
+    function drawHeart(x, y, width, height, spriteX, spriteY) {
+        ctx.drawImage(images.hearts, spriteX, spriteY, width, height, x, y, width, height);
+    }
+
+    function drawBricks() {
+        bricks.forEach(b => {
+            if (b.state) {
+                drawSprite(b.x, b.y, 40, 40, b.spriteX, b.spriteY);
+            }
+        });
+    }
+
+    function drawBall() {
+        drawSprite(ball.x - ball.radius, ball.y - ball.radius, ball.radius * 2, ball.radius * 2, 160, 200);
+    }
+
+    function drawPaddle() {
+        drawSprite(paddle.x, paddle.y, paddle.width, paddle.height, 0, 240);
+    }
+
+    function drawLives() {
+        for (let i = 0; i < game.maxLives; i++) {
+            const spriteX = i < game.lives ? 2 : 66;
+            drawHeart(canvas.width - (game.maxLives - i) * 31, 5, 28, 23, spriteX, 5);
+        }
+    }
+
+    function drawGameOver() {
+        if (game.gameOverY > canvas.height / 2 - images.gameOver.height / 2) {
+            game.gameOverY -= 6;
+        }
+        ctx.drawImage(images.gameOver, canvas.width / 2 - images.gameOver.width / 2, game.gameOverY);
+    }
+
+    function updateBallPosition() {
+        if (ball.state === "Moving") {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Ball collision with walls
+            if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                ball.dx = -ball.dx;
+            }
+
+            if (ball.y - ball.radius < 0) {
+                ball.dy = -ball.dy;
+            }
+
+            // Ball collision with paddle
+            if (ball.y + ball.radius > paddle.y &&
+                ball.x > paddle.x &&
+                ball.x < paddle.x + paddle.width) {
+                ball.dy = -ball.dy;
+            }
+
+            // Ball collision with bricks
+            bricks.forEach(brick => {
+                if (brick.state) {
+                    if (
+                        ball.x > brick.x &&
+                        ball.x < brick.x + brickProps.width &&
+                        ball.y > brick.y &&
+                        ball.y < brick.y + brickProps.height
+                    ) {
+                        ball.dy = -ball.dy;
+                        brick.state = 0;
+                        sounds.ballBrickCollision.play()
+                    }
+                }
+            });
+
+            // Ball out of bounds
+            if (ball.y - ball.radius > canvas.height) {
+                game.lives -= 1;
+                ball.state = "OnPaddle";
+                ball.x = paddle.x + paddle.width / 2;
+                ball.y = paddle.y - ball.radius;
+                ball.dx = Math.random() < 0.5 ? 3 : -3;
+                ball.dy = -3;
+
+                if (game.lives <= 0) {
+                    game.state = "GameOver";
+                    sounds.backgroundMusic.pause()
+                    sounds.gameOver.play()
+                } else {
+                    sounds.failure.play()
+                }
+            }
+
+        } else {
+            ball.x = paddle.x + paddle.width/2 - ball.radius
+            ball.y = paddle.y - ball.radius
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#9999FF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawLives();
+
+        if (game.state === "GameOver") {
+            sounds.backgroundMusic.pause();
+            drawGameOver();
+        } else {
+            updateBallPosition();
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    document.addEventListener("mousemove", e => {
+        if (game.state === "Playing") {
+            const relativeX = e.clientX - canvas.offsetLeft;
+            paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, relativeX));
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        handleInput(event);
+    });
+
+    canvas.addEventListener('mousedown', (event) => {
+        handleInput(event);
+    });
+
+    function handleInput(event) {
+        if (game.state === "Playing" && ball.state === "OnPaddle") {
+            if (event.code === "Space" || event.type === "mousedown") {
+                ball.state = "Moving";
+            }
+        }
+    }
+
+    createBricks();
+    draw();
+</script>
+</body>
+</html>

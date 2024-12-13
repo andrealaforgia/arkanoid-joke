@@ -1,0 +1,104 @@
+# Operating System Files
+/.DS_Store
+/Thumbs.db
+
+# Logs and Temporary Files
+*.log
+*.tmp
+*.bak
+*.swp
+*.orig
+*.rej
+
+# Build Artifacts
+/build/
+/dist/
+/public/
+/out/
+/target/
+
+# IDE Files
+/.idea/
+.vscode/
+
+# Package Managers
+/node_modules/
+/yarn.lock
+/package-lock.json
+/npm-debug.log
+
+# IDE specific files
+# Eclipse
+/.classpath
+/.project
+
+# Visual Studio
+/VisualStudioVersion.txt
+/*.suo
+/*.user
+/*.sln
+/*.pdb
+/*.exe
+/*.dll
+
+# Textmate
+.tm_properties
+.tm_session
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+.swp
+.swpx
+
+# OS specific files
+/cygwin/
+/mnt/
+/proc/
+/sys/
+/tmp/
+/var/
+
+# macOS
+.DS_Store
+
+# Windows
+/AppData/Local/Temp/
+/Temp/
+
+# Specific file types
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.rar
+*.gz
+*.tar.gz
+*.7z
+*.a
+*.so
+
+# Generated Files
+*.pyc
+*.pyo
+*.swp
+*.DS_Store
+npm-debug.log*
+yarn-error.log*
+
+# Local configuration
+.env*
+.secrets*
+config.local.js
+database.local.yml
+
+# Specific to certain projects
+# For example, if you're using a static site generator:
+.cache/
+.next/
+.nuxt/
+.vuepress/
+.gatsby/
