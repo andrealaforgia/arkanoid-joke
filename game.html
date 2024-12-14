@@ -84,6 +84,14 @@
         state: "OnPaddle"
     };
 
+    function resetBall() {
+        ball.x = paddle.x + 60
+        ball.y = paddle.y - 16
+        ball.dx = Math.random() < 0.5 ? 3 : -3
+        ball.dy = -3
+        ball.state = "OnPaddle"
+    }
+
     const game = {
         state: "Playing",
         lives: 3,
@@ -266,7 +274,7 @@
 
     function drawGameOver() {
         if (game.gameOverY > canvas.height / 2 - images.gameOver.height / 2) {
-            game.gameOverY -= 6;
+            game.gameOverY -= 3;
         }
         ctx.drawImage(images.gameOver, canvas.width / 2 - images.gameOver.width / 2, game.gameOverY);
     }
@@ -276,54 +284,84 @@
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // Ball collision with walls
+            // Ball collision with walls (bounce dx)
             if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
-                ball.dx = -ball.dx;
+              ball.dx = -ball.dx;
             }
 
+            // Ball collision with top (bounce dy)
             if (ball.y - ball.radius < 0) {
-                ball.dy = -ball.dy;
+              ball.dy = -ball.dy;
             }
 
-            // Ball collision with paddle
+            // Ball collision with paddle (bounce dy)
             if (ball.y + ball.radius > paddle.y &&
                 ball.x > paddle.x &&
                 ball.x < paddle.x + paddle.width) {
-                ball.dy = -ball.dy;
+              ball.dy = -ball.dy;
             }
 
-            // Ball collision with bricks
-            bricks.forEach(brick => {
-                if (brick.state) {
-                    if (
-                        ball.x > brick.x &&
-                        ball.x < brick.x + brickProps.width &&
-                        ball.y > brick.y &&
-                        ball.y < brick.y + brickProps.height
-                    ) {
-                        ball.dy = -ball.dy;
-                        brick.state = 0;
-                        sounds.ballBrickCollision.play()
-                    }
-                }
-            });
-
-            // Ball out of bounds
-            if (ball.y - ball.radius > canvas.height) {
-                game.lives -= 1;
-                ball.state = "OnPaddle";
-                ball.x = paddle.x + paddle.width / 2;
-                ball.y = paddle.y - ball.radius;
-                ball.dx = Math.random() < 0.5 ? 3 : -3;
-                ball.dy = -3;
-
-                if (game.lives <= 0) {
-                    game.state = "GameOver";
-                    sounds.backgroundMusic.pause()
+            // Ball is lost
+            if ((ball.x < paddle.x || ball.x > paddle.x + paddle.width)
+                    && ball.y > paddle.y + paddle.height) {
+                if (--game.lives == 0) {
+                    sounds.backgroundMusic.pause();
                     sounds.gameOver.play()
+                    game.state = "GameOver"
                 } else {
+                    resetBall()
                     sounds.failure.play()
                 }
+            }
+
+            // Ball collision with bricks (bounce based on collision point)
+            for (let i = 0; i < bricks.length; i++) {
+              const brick = bricks[i];
+              if (brick.state) {
+                const ballHittingFromLeft =
+                    ball.x < brick.x
+                        && ball.x + ball.dx > brick.x
+                        && ball.y > brick.y
+                        && ball.y < brick.y + brickProps.height;
+
+                const ballHittingFromRight =
+                    ball.x > brick.x + brickProps.width
+                        && ball.x + ball.dx < brick.x + brickProps.width
+                        && ball.y > brick.y
+                        && ball.y < brick.y + brickProps.height;
+
+                const ballHittingFromAbove =
+                    ball.x > brick.x
+                        && ball.x < brick.x + brickProps.width
+                        && ball.y < brick.y
+                        && ball.y + ball.dy > brick.y;
+
+                const ballHittingFromBelow =
+                    ball.x > brick.x
+                        && ball.x < brick.x + brickProps.width
+                        && ball.y > brick.y + brickProps.height
+                        && ball.y + ball.dy < brick.y + brickProps.height;
+
+                const collision = ballHittingFromLeft
+                    || ballHittingFromRight
+                    || ballHittingFromAbove
+                    || ballHittingFromBelow;
+
+                if (collision) {
+                  sounds.ballBrickCollision.play();
+                  brick.state = 0;
+
+                  if (ballHittingFromLeft || ballHittingFromRight) {
+                    ball.dx = -ball.dx;
+                  }
+
+                  if (ballHittingFromAbove || ballHittingFromBelow) {
+                    ball.dy = -ball.dy;
+                  }
+
+                  break;
+                }
+              }
             }
 
         } else {
@@ -343,7 +381,6 @@
         drawLives();
 
         if (game.state === "GameOver") {
-            sounds.backgroundMusic.pause();
             drawGameOver();
         } else {
             updateBallPosition();
